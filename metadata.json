@@ -1,0 +1,7 @@
+{
+  "name": "Pesquisa de Prevenção e Segurança Familiar",
+  "description": "Uma plataforma intuitiva para consultores coletarem dados de segurança e prevenção familiar de forma estruturada e ética.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
