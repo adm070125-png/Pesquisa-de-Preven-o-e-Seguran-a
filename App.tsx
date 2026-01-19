@@ -121,7 +121,6 @@ const AdminMap: React.FC<{ records: SurveyRecord[] }> = ({ records }) => {
 const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -166,7 +165,6 @@ const App: React.FC = () => {
 
   const [view, setView] = useState<'AUTH' | 'DASHBOARD' | 'SURVEY' | 'HISTORY' | 'ADMIN' | 'CLIENTS' | 'SALES' | 'NEW_SALE'>(() => {
     if (!currentUser) return 'AUTH';
-    // Se houver uma pesquisa em andamento para o usuário atual, volta direto para ela
     const inProgress = localStorage.getItem('surveyRecords');
     if (inProgress) {
         try {
@@ -228,22 +226,6 @@ const App: React.FC = () => {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; type: 'LOGOUT' | 'STOP_ACTIVITY' | null }>({ isOpen: false, type: null });
 
-  // Sincronização automática do surveyData com o registro global (Auto-Save)
-  useEffect(() => {
-    if (currentSurveyId) {
-      setIsAutoSaving(true);
-      const timer = setTimeout(() => {
-        setRecords(prev => prev.map(r => 
-          r.id_pesquisa === currentSurveyId 
-            ? { ...r, data: surveyData, lastStep: step } 
-            : r
-        ));
-        setIsAutoSaving(false);
-      }, 500); // Debounce de 500ms
-      return () => clearTimeout(timer);
-    }
-  }, [surveyData, step, currentSurveyId]);
-
   useEffect(() => { localStorage.setItem('currentUser', JSON.stringify(currentUser)); }, [currentUser]);
   useEffect(() => { localStorage.setItem('activeSession', JSON.stringify(activeSession)); }, [activeSession]);
   useEffect(() => { localStorage.setItem('surveyRecords', JSON.stringify(records)); }, [records]);
@@ -300,7 +282,6 @@ const App: React.FC = () => {
       const ts = new Date().toISOString();
       const synced = isOnline;
 
-      // 1. Atualizar o registro da pesquisa (Status: Concluída)
       const updatedRecords = records.map(r => r.id_pesquisa === currentSurveyId ? { 
         ...r, 
         data: surveyData, 
@@ -311,7 +292,6 @@ const App: React.FC = () => {
       } : r);
       setRecords(updatedRecords);
 
-      // 2. Transmissão automática para CRM Carteira (Garante integridade)
       setClientes(prev => {
         const existingIdx = prev.findIndex(c => c.telefone === surveyData.telefone);
         const fullAddress = `${surveyData.bairro}, ${surveyData.cidade}`;
@@ -346,7 +326,6 @@ const App: React.FC = () => {
         }, ...prev];
       });
 
-      // 3. Resetar estados de trabalho
       setCurrentSurveyId(null); 
       setSurveyData(INITIAL_DATA); 
       setStep(1); 
@@ -455,7 +434,8 @@ const App: React.FC = () => {
       doc.text(item.label, marginX, currentY);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(30, 41, 59);
-      doc.text(item.value, marginX + 30, currentY);
+      // CORREÇÃO: Aumentado o recuo de 30 para 45 para comportar o rótulo "Localização:" sem sobreposição
+      doc.text(item.value, marginX + 45, currentY);
       currentY += 8;
     });
 
@@ -782,7 +762,7 @@ const App: React.FC = () => {
                     <div className="space-y-3">
                       <p className="text-slate-600 font-medium">Resolver um imprevisto urgente sem planejamento pode custar muito caro. Qual sua percepção?</p>
                       <div className="space-y-3">
-                        {['Já sei', 'Tenho uma ideia', 'Nunca pensei nisso'].map(opt => (
+                        {['Já sei', 'Tenho uma ideia', 'Nunca pensou nisso'].map(opt => (
                           <OptionButton key={opt} label={opt} selected={surveyData.custoImprevisto === opt} onClick={() => setSurveyData({...surveyData, custoImprevisto: opt})} />
                         ))}
                       </div>
@@ -885,11 +865,6 @@ const App: React.FC = () => {
           </div>
 
           <footer className="p-6 bg-white border-t border-slate-100 flex flex-col gap-4 sticky bottom-0 z-50">
-            {isAutoSaving && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full bg-slate-800 text-white text-[8px] font-bold px-3 py-1 rounded-t-lg flex items-center gap-2">
-                    <Save className="w-2.5 h-2.5 animate-pulse" /> SALVO LOCALMENTE
-                </div>
-            )}
             {showError && !isStepValid && (<div className="bg-red-50 p-4 rounded-xl text-red-600 text-[10px] font-black uppercase flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4" /> Responda todas as perguntas obrigatórias do bloco.</div>)}
             
             {step < 9 && (
